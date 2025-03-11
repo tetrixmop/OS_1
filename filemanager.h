@@ -12,6 +12,7 @@ namespace fManager
 	{
 	public:
 		static void PrintDrives();
+		static void PrintFlags(DWORD flags);
 		static void PrintDriveInfo(const std::string& driveName);
 		static int CreateDir(std::filesystem::path path);
 		static int RemoveDir(std::filesystem::path path);

@@ -18,6 +18,52 @@ namespace fManager
 		}
 	}
 
+	void FileManager::PrintFlags(DWORD flags)
+	{
+		printf("Флаги файловой системы:\n");
+
+		if (flags & FILE_CASE_SENSITIVE_SEARCH)
+			printf("  - FILE_CASE_SENSITIVE_SEARCH: Файловая система поддерживает чувствительные к регистру имена файлов.\n");
+		if (flags & FILE_CASE_PRESERVED_NAMES)
+			printf("  - FILE_CASE_PRESERVED_NAMES: Файловая система сохраняет регистр имён файлов при записи на диск.\n");
+		if (flags & FILE_UNICODE_ON_DISK)
+			printf("  - FILE_UNICODE_ON_DISK: Файловая система поддерживает Unicode в именах файлов.\n");
+		if (flags & FILE_PERSISTENT_ACLS)
+			printf("  - FILE_PERSISTENT_ACLS: Файловая система поддерживает и применяет списки контроля доступа (ACL).\n");
+		if (flags & FILE_FILE_COMPRESSION)
+			printf("  - FILE_FILE_COMPRESSION: Файловая система поддерживает сжатие файлов.\n");
+		if (flags & FILE_VOLUME_QUOTAS)
+			printf("  - FILE_VOLUME_QUOTAS: Файловая система поддерживает квоты на диске.\n");
+		if (flags & FILE_SUPPORTS_SPARSE_FILES)
+			printf("  - FILE_SUPPORTS_SPARSE_FILES: Файловая система поддерживает разрежённые файлы.\n");
+		if (flags & FILE_SUPPORTS_REPARSE_POINTS)
+			printf("  - FILE_SUPPORTS_REPARSE_POINTS: Файловая система поддерживает точки повторного анализа (reparse points).\n");
+		if (flags & FILE_SUPPORTS_REMOTE_STORAGE)
+			printf("  - FILE_SUPPORTS_REMOTE_STORAGE: Файловая система поддерживает удалённое хранилище.\n");
+		if (flags & FILE_VOLUME_IS_COMPRESSED)
+			printf("  - FILE_VOLUME_IS_COMPRESSED: Указанный том является сжатым.\n");
+		if (flags & FILE_SUPPORTS_OBJECT_IDS)
+			printf("  - FILE_SUPPORTS_OBJECT_IDS: Файловая система поддерживает идентификаторы объектов.\n");
+		if (flags & FILE_SUPPORTS_ENCRYPTION)
+			printf("  - FILE_SUPPORTS_ENCRYPTION: Файловая система поддерживает шифрованную файловую систему (EFS).\n");
+		if (flags & FILE_NAMED_STREAMS)
+			printf("  - FILE_NAMED_STREAMS: Файловая система поддерживает именованные потоки.\n");
+		if (flags & FILE_READ_ONLY_VOLUME)
+			printf("  - FILE_READ_ONLY_VOLUME: Указанный том доступен только для чтения.\n");
+		if (flags & FILE_SEQUENTIAL_WRITE_ONCE)
+			printf("  - FILE_SEQUENTIAL_WRITE_ONCE: Файловая система поддерживает однократную последовательную запись.\n");
+		if (flags & FILE_SUPPORTS_TRANSACTIONS)
+			printf("  - FILE_SUPPORTS_TRANSACTIONS: Файловая система поддерживает транзакции.\n");
+		if (flags & FILE_SUPPORTS_HARD_LINKS)
+			printf("  - FILE_SUPPORTS_HARD_LINKS: Файловая система поддерживает жёсткие ссылки.\n");
+		if (flags & FILE_SUPPORTS_EXTENDED_ATTRIBUTES)
+			printf("  - FILE_SUPPORTS_EXTENDED_ATTRIBUTES: Файловая система поддерживает расширенные атрибуты.\n");
+		if (flags & FILE_SUPPORTS_OPEN_BY_FILE_ID)
+			printf("  - FILE_SUPPORTS_OPEN_BY_FILE_ID: Файловая система поддерживает открытие файлов по ID.\n");
+		if (flags & FILE_SUPPORTS_USN_JOURNAL)
+			printf("  - FILE_SUPPORTS_USN_JOURNAL: Файловая система поддерживает журналы USN (журналы обновления последовательных номеров).\n");
+	}
+
 	void FileManager::PrintDriveInfo(const std::string& driveName)
 	{
 		UINT driveType = GetDriveTypeA(driveName.c_str());
@@ -51,22 +97,21 @@ namespace fManager
 
 		char nameBuffer[MAX_PATH];
 		DWORD dwMaximumComponentLength;
-		DWORD dwFileSystemFlags;
+		DWORD dwFileSystemFlags = 0;
 		DWORD dwSerialNumber;
 		char fileSystemName[MAX_PATH];
 
 		GetVolumeInformationA(driveName.c_str(), nameBuffer, MAX_PATH, &dwSerialNumber, &dwMaximumComponentLength, &dwFileSystemFlags, fileSystemName, MAX_PATH);
 		printf("Volume Name: %s\n", nameBuffer);
-		printf("Volume Serial Number: %d\n", dwSerialNumber);
-		printf("Maximun Component Length: %d\n", dwMaximumComponentLength);
-		printf("File System Flags: %d\n", dwFileSystemFlags);
+		printf("Volume Serial Number: %ld\n", dwSerialNumber);
+		printf("Maximun Component Length: %ld\n", dwMaximumComponentLength);
 		printf("File System Name: %s\n", fileSystemName);
-
-		ULARGE_INTEGER FreeBytesAvailableToCaller;
+		PrintFlags(dwFileSystemFlags);
+		ULARGE_INTEGER TotalNumberOfBytes;
 		ULARGE_INTEGER TotalNumberOfFreeBytes;
 
-		GetDiskFreeSpaceExA(driveName.c_str(), &FreeBytesAvailableToCaller, NULL, &TotalNumberOfFreeBytes);
-		printf("Free Bytes: %llu / %llu.\n", TotalNumberOfFreeBytes, FreeBytesAvailableToCaller);
+		GetDiskFreeSpaceExA(driveName.c_str(), NULL, &TotalNumberOfBytes , &TotalNumberOfFreeBytes);
+		printf("Free Bytes: %llu / %llu.\n", TotalNumberOfFreeBytes, TotalNumberOfBytes);
 	}
 
 	int FileManager::CreateDir(std::filesystem::path path)
@@ -216,12 +261,12 @@ namespace fManager
 		if (time != -1)
 		{
 			FILETIME fTime;
-			HANDLE hFile = CreateFileA(path.string().c_str(), 0x00, 0x00, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			HANDLE hFile = CreateFileA(path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0x00, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hFile != INVALID_HANDLE_VALUE)
 			{
 				TimetToFileTime(time, &fTime);
 
-				if (SetFileTime(hFile, &fTime, NULL, NULL))
+				if (SetFileTime(hFile, &fTime, NULL, NULL) != 0)
 				{
 					CloseHandle(hFile);
 					return 0;
@@ -245,7 +290,7 @@ namespace fManager
 		if (time != -1)
 		{
 			FILETIME fTime;
-			HANDLE hFile = CreateFileA(path.string().c_str(), 0x00, 0x00, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			HANDLE hFile = CreateFileA(path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0x00, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hFile != INVALID_HANDLE_VALUE)
 			{
 				TimetToFileTime(time, &fTime);
@@ -274,7 +319,7 @@ namespace fManager
 		if (time != -1)
 		{
 			FILETIME fTime;
-			HANDLE hFile = CreateFileA(path.string().c_str(), 0x00, 0x00, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			HANDLE hFile = CreateFileA(path.string().c_str(), GENERIC_READ | GENERIC_WRITE, 0x00, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hFile != INVALID_HANDLE_VALUE)
 			{
 				TimetToFileTime(time, &fTime);

@@ -81,7 +81,7 @@ void View::Run()
 void View::printDriveInfo()
 {
     std::string name{};
-    std::cout << "¬ведите им€ диска (пример: C:\)";
+    std::cout << "¬ведите им€ диска (пример: C:\): ";
     std::cin >> name;
     FileManager::PrintDriveInfo(name);
 }
@@ -116,7 +116,7 @@ void View::createFile()
     std::cout << "¬ведите путь к файлу (/ или \\\\ в качестве разделител€): ";
     std::cin >> path;
 
-    if (FileManager::CrFile(path) == 0)
+    if (FileManager::CrFile(path) != 0)
         std::cout << "‘айл создан" << std::endl;
     else
         std::cout << "ќшибка создани€ файла" << std::endl;
